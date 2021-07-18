@@ -1,0 +1,58 @@
+version: '3'
+
+services: 
+
+    book_bot:
+        build: 
+            context: ./
+            dockerfile: Dockerfile
+        container_name: book_bot
+        command: python app.py
+        restart: always
+        volumes: 
+            - .:/usr/src/book_bot/
+        depends_on: 
+            - db
+    
+    db:
+        image: postgres
+        environment: 
+            POSTGRES_PASSWORD: $PGPASSWORD
+            POSTGRES_DB: $DATABASE_NAME
+            POSTGRES_USER: $PGUSER
+        container_name: db
+        restart: always
+        ports: 
+            - '5432:5432'
+        volumes: 
+            - ./postgresql:/var/lib/postgresql
+
+    
+    adminka:
+        build: 
+            context: ./
+            dockerfile: Dockerfile
+        container_name: adminka
+        entrypoint: /usr/src/book_bot/start_gunicorn.sh
+        restart: always
+        volumes: 
+            - ./adminka:/usr/src/book_bot/adminka
+        ports:
+            - "8000:8000"
+        depends_on: 
+            - db
+    
+    nginx:
+        build:
+            context: ./nginx
+            dockerfile: Dockerfile
+        container_name: nginx
+        depends_on:
+            - book_bot
+            - db
+            - adminka
+        ports:
+            - "80:80"
+        volumes:
+            - ./adminka/static/:/adminka/static
+            - ./nginx/:/nginx
